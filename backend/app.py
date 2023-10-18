@@ -1,37 +1,38 @@
 import subprocess
+from flask import Flask, request, jsonify
 
-# Define recording parameters
-recording_area = "1920x1080"  # Recording area (e.g., full HD resolution)
-output_quality = 25  # Output video quality (adjust as needed, lower values mean higher quality)
-output_format = "mp4"  # Output format (e.g., mp4)
-output_filename = "output_video.mp4"  # Output video file name
+app = Flask(__name)
+recording_process = None  # Define recording_process as a global variable
 
-def start_screen_recording(output_filename, recording_area, output_quality, output_format):
+@app.route('/api/start-recording', methods=['POST'])
+def start_recording():
+    global recording_process  # Access the global recording_process variable
+    if recording_process is not None and recording_process.poll() is None:
+        return jsonify(message="Recording already in progress.")
+    
     # Define the FFmpeg command to start recording
     command = [
         "ffmpeg",
-        "-f", "x11grab",  # Specify the screen capture format
-        "-s", recording_area,  # Set the screen resolution
-        "-i", ":0.0",  # Screen capture from display 0.0
-        "-q:v", str(output_quality),  # Set the video quality
-        output_filename  # Specify the output file
+        "-f", "x11grab",
+        "-s", "1920x1080",  # Recording area (adjust as needed)
+        "-i", ":0.0",
+        "output.mp4"  # Output file name
     ]
 
-    # Start the screen recording using subprocess.Popen
+    # Start the recording process
     recording_process = subprocess.Popen(command)
+    return jsonify(message="Screen recording started.")
 
-    return recording_process
-
-def stop_screen_recording(recording_process):
+@app.route('/api/stop-recording', methods=['POST'])
+def stop_recording():
+    global recording_process  # Access the global recording_process variable
+    if recording_process is None or recording_process.poll() is not None:
+        return jsonify(message="No recording in progress.")
+    
     # Terminate the recording process
     recording_process.terminate()
     recording_process.wait()
+    return jsonify(message="Screen recording stopped.")
 
-if __name__ == "__main__":
-    # Start screen recording
-    recording_process = start_screen_recording(output_filename, recording_area, output_quality, output_format)
-    
-    input("Press Enter to stop recording...")  # Wait for user input to stop recording
-    
-    # Stop screen recording
-    stop_screen_recording(recording_process)
+if __name__ == '__main__':
+    app.run(debug=True)
